@@ -66,3 +66,10 @@ language pair. See the table above for per-script descriptions.
 
 Same structure as `rgn-ita/data/`, maintained independently for this
 language pair. See the table above for per-script descriptions.
+
+## License
+
+- **Code** (all `.py` files under `nds-deu/scripts/` and `rgn-ita/scripts/`)
+  is released under the MIT License — see [`LICENSE`](LICENSE).
+- **Data** (all files under `nds-deu/data/` and `rgn-ita/data/`)
+  is released under CC BY 4.0 — see [`LICENSE-DATA`](LICENSE-DATA).
