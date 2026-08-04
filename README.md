@@ -2,7 +2,7 @@
 
 This repository contains the experiments on orthographic variation for two language pairs, Romagnol-Italian and Low Saxon-German. Each language
 pair lives in its own folder with an identical layout: a `scripts/`
-folder holding the pipeline code and a `data/` folder holding the input data and additional resources create for the experiments.
+folder holding the pipeline code and a `data/` folder holding the input data and additional resources created for the experiments.
 
 ```
 .
@@ -29,12 +29,12 @@ independently per language pair.
 | `build_dataset.py` | Builds the parallel dataset and the orthographic-variation training sets (L0–L5). |
 | `build_lexical.py` | Builds the additional resources. |
 | `alignment.py` | Word alignment step. |
-| `distance.py` | String-distance utilities (e.g. Levenshtein). |
+| `distance.py` | String-distance utilities (e.g., Levenshtein). |
 | `generate_distractors.py` | Generates distractor candidates for the ranking task. |
 | `finetune_labse.py` | Fine-tunes the LaBSE encoder on the training sets. |
-| `extract_embeddings.py` | Extracts sentence embeddings from a model. |
-| `evaluate.py` | Aggregates CLSD runs: metrics (P@1, MRR, mean rank), paired-bootstrap significance, and error analysis. |
-| `analyze_intrinsic.py` | Intrinsic evaluation of embeddings: intra-lemma cohesion, pair cosine, CKA, and diagnostic checks. |
+| `extract_embeddings.py` | Extracts sentence embeddings. |
+| `evaluate.py` | Aggregates CLSD runs: metrics (P@1, MRR). |
+| `analyze_intrinsic.py` | Intrinsic evaluation of embeddings: intra-lemma cohesion, pair cosine, CKA. |
 | `heldout.py` |  Held-out set construction handling. |
 | `tokenization.py` | Tokenization utilities. |
 | `clsd_common.py` | Shared helpers imported across scripts. |
