@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+
+*.csv
+*.npz
+*.log
+
+venv_08/
+new_venv/
+bin/
+
+out/
+nohup_logs/
+de_exps/
