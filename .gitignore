@@ -12,3 +12,8 @@ bin/
 out/
 nohup_logs/
 de_exps/
+
+analysis/
+run_all.sh
+run_all_gen.sbatch
+txt_files/
