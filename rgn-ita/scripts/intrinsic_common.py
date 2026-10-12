@@ -18,9 +18,11 @@ def load_glossary(path):
     lem2vars = {}
     with open(path, newline="", encoding="utf-8") as f:
         rd = csv.DictReader(f)
-        var_cols = [c for c in rd.fieldnames if c.lower().startswith("rgn_var")]
+        import re
+        var_cols = [c for c in rd.fieldnames if re.fullmatch(r"[a-z]+_var\d+", c.lower())]
+        lemma_col = next(c for c in rd.fieldnames if c.lower().endswith("_word"))
         for r in rd:
-            lemma = r["ita_word"].strip()
+            lemma = r[lemma_col].strip()
             variants = []
             seen = set()
             for c in var_cols:

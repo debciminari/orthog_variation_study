@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """
 Compute measures for intrinsic evaluation
+
+Funziona sia per LaBSE (embeddings.npz) sia per multilingual-e5
+(embeddings_e5.npz): l'encoder e il modello base vengono letti dai
+metadati del .npz.
 """
 import argparse, json
 from collections import defaultdict
@@ -100,7 +104,6 @@ def tokenization_report(forms, base_model, lem2vars):
         if len(ps) > 1:
             n_multi += 1
 
-    
     overlaps = []
     for lemma, vs in lem2vars.items():
         for i in range(len(vs)):
@@ -108,10 +111,13 @@ def tokenization_report(forms, base_model, lem2vars):
                 sa, sb = set(per_form[vs[i]]), set(per_form[vs[j]])
                 if sa or sb:
                     overlaps.append(len(sa & sb) / len(sa | sb))
+    n_pieces = [len(per_form[f]) for f in forms]
     return {
+        "tokenizer": base_model,
         "n_forms": len(forms),
         "n_multi_subword": n_multi,
         "pct_multi_subword": round(100 * n_multi / max(1, len(forms)), 1),
+        "mean_subwords_per_form": round(float(np.mean(n_pieces)), 3) if n_pieces else None,
         "mean_subword_jaccard_within_lemma": round(float(np.mean(overlaps)), 3) if overlaps else None,
         "examples": {f: per_form[f] for f in forms[:8]},
     }
@@ -136,8 +142,9 @@ def main():
     ap.add_argument("--out-dir", default="analysis")
     ap.add_argument("--tokenizer-check", action="store_true",
                     help="controllo 2: analizza la tokenizzazione subword delle forme")
-    ap.add_argument("--base-model", default="sentence-transformers/LaBSE",
-                    help="modello base per il tokenizer (controllo 2)")
+    ap.add_argument("--base-model", default=None,
+                    help="modello base per il tokenizer (controllo 2). "
+                         "Se assente, usa quello registrato nei metadati del .npz.")
     args = ap.parse_args()
 
     out_dir = Path(args.out_dir); out_dir.mkdir(parents=True, exist_ok=True)
@@ -149,6 +156,16 @@ def main():
     pairs = lemma_pairs(lem2vars)
     _, idx, meta, mats = load_emb(args.emb)
 
+    # encoder e modello base dai metadati del .npz (LaBSE se assenti)
+    base_model = args.base_model or meta.get("base_model", "sentence-transformers/LaBSE")
+    encoder_name = meta.get("encoder", "LaBSE")
+
+    # controllo di coerenza: glossario e .npz devono avere le stesse forme
+    missing_forms = [f for f in forms if f not in idx]
+    if missing_forms:
+        raise SystemExit(f"{len(missing_forms)} forme del glossario non presenti nel .npz "
+                         f"(es. {missing_forms[:5]}): usa lo stesso glossario dell'estrazione.")
+
     def tag(st, sd):
         return f"{st}_seed{sd}"
 
@@ -156,9 +173,11 @@ def main():
 
     # ---- results ----------------------------
     results = {"per_level": {}, "bins_per_level": {}, "config": {
+        "encoder": encoder_name, "base_model": base_model, "emb": str(args.emb),
         "sets": sets, "seeds": seeds, "baseline": args.baseline,
         "n_lemmi": len(lem2vars), "n_forms": len(forms), "n_pairs": len(pairs)}}
 
+    print(f"[encoder] {encoder_name} ({base_model})")
     print(f"[data] {len(lem2vars)} lemmi | {len(forms)} forme | {len(pairs)} coppie")
     print(f"\n{'livello':>8} {'coesione':>18} {'coseno_coppia':>18}")
     for st in sets:
@@ -175,8 +194,9 @@ def main():
         coh_m, coh_s = agg_seeds(coh_seed)
         cos_m, cos_s = agg_seeds(cos_seed)
         results["per_level"][st] = {"cohesion_mean": coh_m, "cohesion_std": coh_s,
-                                    "pair_cosine_mean": cos_m, "pair_cosine_std": cos_s}
-        
+                                    "pair_cosine_mean": cos_m, "pair_cosine_std": cos_s,
+                                    "n_seeds": len(coh_seed)}
+
         binagg = {}
         for b in ("low", "med", "high"):
             vals = [bs[b][0] for bs in bins_seed if b in bs]
@@ -185,7 +205,8 @@ def main():
             binagg[b] = {"cosine_mean": m, "cosine_std": s,
                          "n_lemmi": int(np.median(ns)) if ns else 0}
         results["bins_per_level"][st] = binagg
-        print(f"{st:>8} {coh_m:>10.4f}±{coh_s:<6.4f} {cos_m:>10.4f}±{cos_s:<6.4f}")
+        print(f"{st:>8} {coh_m:>10.4f}±{coh_s:<6.4f} {cos_m:>10.4f}±{cos_s:<6.4f}"
+              f"  ({len(coh_seed)} seed)")
 
     # ---- CKA -----------------------
     print(f"\n[CKA] rispetto a {args.baseline} (media sui seed) + within-level baseline")
@@ -194,7 +215,6 @@ def main():
     def mat_for(t):
         return mats[t]
 
-   
     for st in sets:
         ts = [tag(st, sd) for sd in seeds if available(tag(st, sd))]
         vals = []
@@ -231,11 +251,10 @@ def main():
 
     results["cka"] = cka
 
-# -----------
+    # -----------
     diag = {}
     print(f"\n{'='*60}\nCONTROLLI DIAGNOSTICI\n{'='*60}")
 
-    
     if "zeroshot" in mats:
         zs_coh = cohesion_mean(mats, "zeroshot", idx, lem2vars)
         zs_inter = inter_lemma_cosine(mats, "zeroshot", idx, lem2vars)
@@ -246,8 +265,8 @@ def main():
                    for st in sets for sd in seeds if available(tag(st, sd))]
         ft_coh = float(np.mean(ft_cohs)) if ft_cohs else float("nan")
         print(f"\n[1] Zero-shot vs fine-tunato (coesione intra-lemma):")
-        print(f"    LaBSE zero-shot          : {zs_coh:.4f}")
-        print(f"    fine-tunato (media L1-L5): {ft_coh:.4f}")
+        print(f"    {encoder_name} zero-shot : {zs_coh:.4f}")
+        print(f"    fine-tunato (media {sets[0]}-{sets[-1]}): {ft_coh:.4f}")
         delta = ft_coh - zs_coh
         muove = "il FT muove le rappresentazioni" if abs(delta) > 0.02 \
             else "il FT NON muove le forme held-out (dominano i pesi pre-addestrati)"
@@ -255,9 +274,8 @@ def main():
         diag["finetuned_mean_cohesion"] = ft_coh
         diag["ft_minus_zeroshot"] = delta
     else:
-        print("\n[1] zero-shot assente (rilancia extract_embeddings senza --no-zeroshot)")
+        print("\n[1] zero-shot assente (rilancia l'estrazione senza --no-zeroshot)")
 
-    
     print(f"\n[3] Coesione intra-lemma vs pavimento inter-lemma (anisotropia):")
     inter_by_level = {}
     for st in sets:
@@ -274,13 +292,13 @@ def main():
               f"gap={intra-inter_m:+.4f}  {verdict}")
     diag["inter_lemma_by_level"] = inter_by_level
 
-    
     if args.tokenizer_check:
-        print(f"\n[2] Tokenizzazione delle forme held-out:")
-        tokr = tokenization_report(forms, args.base_model, lem2vars)
+        print(f"\n[2] Tokenizzazione delle forme held-out ({base_model}):")
+        tokr = tokenization_report(forms, base_model, lem2vars)
         jac = tokr['mean_subword_jaccard_within_lemma']
         print(f"    forme spezzate in >1 subword: {tokr['n_multi_subword']}/{tokr['n_forms']} "
               f"({tokr['pct_multi_subword']}%)")
+        print(f"    subword medi per forma (fertilita'): {tokr['mean_subwords_per_form']}")
         print(f"    Jaccard subword medio tra varianti stesso lemma: {jac}")
         if jac is not None and jac >= 0.5:
             print(f"    -> Jaccard ALTO: varianti quasi identiche a livello subword; "
@@ -300,7 +318,6 @@ def main():
     (out_dir / "results.json").write_text(
         json.dumps(results, indent=2, ensure_ascii=False), encoding="utf-8")
 
-    
     with open(out_dir / "per_level.csv", "w", encoding="utf-8") as f:
         f.write("level,cohesion_mean,cohesion_std,pair_cosine_mean,pair_cosine_std,"
                 "cka_vs_baseline,cka_within\n")
