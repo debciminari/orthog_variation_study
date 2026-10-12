@@ -85,7 +85,7 @@ def observe_classes(ds, form2class):
     return obs
 
 def entropy_metrics(ds, form2class, grid=None):
-   obs=observe_classes(ds, form2class)
+    obs=observe_classes(ds, form2class)
     if grid is None:
         classes=[c for c in obs if sum(obs[c].values())>0]
     else:

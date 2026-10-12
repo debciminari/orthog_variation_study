@@ -220,7 +220,7 @@ def cos(a: np.ndarray, b: np.ndarray) -> float:
 
 
 class LabseEncoder:
-     def __init__(self, model_name: str = "sentence-transformers/LaBSE"):
+    def __init__(self, model_name: str = "sentence-transformers/LaBSE"):
         import os
 
         from sentence_transformers import SentenceTransformer
