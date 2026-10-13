@@ -30,9 +30,7 @@ are marked with `[E5]` in the code:
 - the base model is `intfloat/multilingual-e5-base`;
 - the `"query: "` prefix is added to both sides, in training and in
   evaluation, as recommended by the e5 model card for symmetric tasks;
-- the pooling is checked to be mean pooling, the pooling e5 was trained with;
-- outputs go to separate folders (`out/runs_e5`, `out/e5`,
-  `embeddings_e5.npz`), so that LaBSE results are not overwritten.
+- the pooling is checked to be mean pooling, the pooling e5 was trained with.
 
 The model name and the prefix are defined once in `finetune_e5.py` and
 imported by the other `_e5` scripts, so they are guaranteed to be identical
@@ -53,12 +51,11 @@ across the pipeline.
 | `generate_distractors.py` | Generates distractor candidates for the ranking task. |
 | `finetune_labse.py` | Fine-tunes the LaBSE encoder on the training sets. |
 | `finetune_e5.py` | Fine-tunes the multilingual-e5-base encoder on the training sets (counterpart of `finetune_labse.py`). |
-| `extract_embeddings.py` | Extracts sentence embeddings (LaBSE). |
-| `extract_embeddings_e5.py` | Extracts type-level embeddings of the held-out forms for intrinsic evaluation (multilingual-e5-base). Keys in the output `.npz` match the LaBSE ones, so `analyze_intrinsic.py` works unchanged. |
+| `extract_embeddings.py` | Extracts embeddings (LaBSE). |
+| `extract_embeddings_e5.py` | Extracts embeddings (multilingual-e5-base). |
 | `evaluate.py` | Aggregates CLSD runs: metrics (P@1, MRR). |
-| `evaluate_e5.py` | TODO: add description. |
-| `aggregate_e5.py` | Aggregates CLSD runs for multilingual-e5-base: metrics (P@1, MRR), paired bootstrap, entropy vs P@1 trend test, error analysis. Includes the multilingual-e5-base zero-shot baseline. |
-| `analyze_intrinsic.py` | Intrinsic evaluation of embeddings: intra-lemma cohesion, pair cosine, CKA. |
+| `evaluate_e5.py` | Aggregates CLSD runs for multilingual-e5-base: metrics (P@1, MRR).|
+| `analyze_intrinsic.py` | Intrinsic evaluation of embeddings: intra-lemma and inter-lemma cohesion, CKA. |
 | `heldout.py` |  Held-out set construction handling. |
 | `tokenization.py` | Tokenization utilities. |
 | `clsd_common.py` | Shared helpers imported across scripts. |
